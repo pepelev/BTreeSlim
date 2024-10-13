@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BTreeSlim", "BTreeSlim\BTreeSlim.csproj", "{0778B7EF-62CF-431A-9D3B-DCF1DCE77B91}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BTreeSlim.Tests", "BTreeSlim.Tests\BTreeSlim.Tests.csproj", "{EFA89ADB-D561-425F-830C-B24F44383443}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0778B7EF-62CF-431A-9D3B-DCF1DCE77B91}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0778B7EF-62CF-431A-9D3B-DCF1DCE77B91}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0778B7EF-62CF-431A-9D3B-DCF1DCE77B91}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0778B7EF-62CF-431A-9D3B-DCF1DCE77B91}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EFA89ADB-D561-425F-830C-B24F44383443}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EFA89ADB-D561-425F-830C-B24F44383443}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EFA89ADB-D561-425F-830C-B24F44383443}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EFA89ADB-D561-425F-830C-B24F44383443}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
