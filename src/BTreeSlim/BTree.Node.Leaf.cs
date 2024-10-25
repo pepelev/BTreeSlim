@@ -6,7 +6,7 @@ namespace BTreeSlim;
 
 public sealed partial class BTree<TKey, T, TItemsBuffer, TChildrenBuffer>
 {
-    private abstract partial class Node
+    internal abstract partial class Node
     {
         public sealed class Leaf : Node
         {

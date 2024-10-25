@@ -40,12 +40,93 @@ public static class Buffers
         public Span<T> Content => MemoryMarshal.CreateSpan(ref value0, Capacity);
     }
 
+    [InlineArray(31)]
+    public struct S31<T> : IBuffer<T>
+    {
+        private T value0;
+
+        public static int Capacity => 31;
+        public Span<T> Content => MemoryMarshal.CreateSpan(ref value0, Capacity);
+    }
+
     [InlineArray(32)]
     public struct S32<T> : IBuffer<T>
     {
         private T value0;
 
         public static int Capacity => 32;
+        public Span<T> Content => MemoryMarshal.CreateSpan(ref value0, Capacity);
+    }
+
+    [InlineArray(63)]
+    public struct S63<T> : IBuffer<T>
+    {
+        private T value0;
+
+        public static int Capacity => 63;
+        public Span<T> Content => MemoryMarshal.CreateSpan(ref value0, Capacity);
+    }
+
+    [InlineArray(64)]
+    public struct S64<T> : IBuffer<T>
+    {
+        private T value0;
+
+        public static int Capacity => 64;
+        public Span<T> Content => MemoryMarshal.CreateSpan(ref value0, Capacity);
+    }
+
+    [InlineArray(127)]
+    public struct S127<T> : IBuffer<T>
+    {
+        private T value0;
+
+        public static int Capacity => 127;
+        public Span<T> Content => MemoryMarshal.CreateSpan(ref value0, Capacity);
+    }
+
+    [InlineArray(128)]
+    public struct S128<T> : IBuffer<T>
+    {
+        private T value0;
+
+        public static int Capacity => 128;
+        public Span<T> Content => MemoryMarshal.CreateSpan(ref value0, Capacity);
+    }
+
+    [InlineArray(255)]
+    public struct S255<T> : IBuffer<T>
+    {
+        private T value0;
+
+        public static int Capacity => 255;
+        public Span<T> Content => MemoryMarshal.CreateSpan(ref value0, Capacity);
+    }
+
+    [InlineArray(256)]
+    public struct S256<T> : IBuffer<T>
+    {
+        private T value0;
+
+        public static int Capacity => 256;
+        public Span<T> Content => MemoryMarshal.CreateSpan(ref value0, Capacity);
+    }
+
+    [InlineArray(511)]
+    public struct S511<T> : IBuffer<T>
+    {
+        private T value0;
+
+        public static int Capacity => 511;
+        public Span<T> Content => MemoryMarshal.CreateSpan(ref value0, Capacity);
+    }
+
+    [InlineArray(512)]
+    public struct S512<T> : IBuffer<T>
+    {
+        private T value0;
+
+        public static int Capacity => 512;
         public Span<T> Content => MemoryMarshal.CreateSpan(ref value0, Capacity);
     }
 }

@@ -1,15 +1,9 @@
 ﻿namespace BTreeSlim;
 
-public readonly struct Pair<TKey, TValue> : IKeyed<TKey>, IEquatable<Pair<TKey, TValue>>
+public readonly struct Pair<TKey, TValue>(TKey key, TValue value) : IKeyed<TKey>, IEquatable<Pair<TKey, TValue>>
 {
-    public Pair(TKey key, TValue value)
-    {
-        Key = key;
-        Value = value;
-    }
-
-    public TKey Key { get; }
-    public TValue Value { get; }
+    public TKey Key { get; } = key;
+    public TValue Value { get; } = value;
 
     public override string ToString() => $"({Key}, {Value})";
 

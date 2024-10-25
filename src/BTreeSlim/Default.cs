@@ -3,9 +3,9 @@ namespace BTreeSlim;
 
 internal static class Default<T>
 {
-    private static T Value = default!;
+    private static T value = default!;
 
-    public static ref T Ref() => ref Value;
+    public static ref T Ref() => ref value;
 }
 
 #endif

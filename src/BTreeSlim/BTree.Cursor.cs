@@ -30,6 +30,11 @@ public sealed partial class BTree<TKey, T, TItemsBuffer, TChildrenBuffer>
             version = tree.version;
         }
 
+        internal void EnsureValid()
+        {
+            var p = !typeof(T).IsValueType && stack.IsEmpty == (currentKey == null);
+        }
+
         public Range<TKey> Range
         {
             readonly get => range;
@@ -554,7 +559,7 @@ public sealed partial class BTree<TKey, T, TItemsBuffer, TChildrenBuffer>
             lastMove = move;
             version = ++tree.version;
 
-            tree.pool.ActualReturn();
+            tree.pool.ActualReturnDeferred();
             tree.root?.EnsureValid(isRoot: true);
         }
 

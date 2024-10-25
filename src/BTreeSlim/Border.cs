@@ -6,89 +6,93 @@ public static class Border
     public static Border<T> Exclusive<T>(T bound) where T : IComparable<T> => new(BorderKind.Exclusive, bound);
 }
 
+public enum BorderSide : sbyte
+{
+    Left = -1,
+    Right = 1
+}
+
 public readonly struct Border<T> where T : IComparable<T>
 {
-    private const sbyte LeftSide = -1;
-    private const sbyte RightSide = 1;
-
-    private readonly BorderKind kind;
-    private readonly T value;
+    public BorderKind Kind { get; }
+    public T Value { get; }
 
     internal Border(BorderKind kind, T value)
     {
-        this.kind = kind;
-        this.value = value;
+        Kind = kind;
+        Value = value;
     }
 
     public static Border<T> Infinite => new(BorderKind.Infinite, default!);
 
-    public bool IsInfinite => kind == BorderKind.Infinite;
+    public bool IsInfinite => Kind == BorderKind.Infinite;
 
     public bool IsInclusive(out T border)
     {
-        border = value;
-        return kind == BorderKind.Inclusive;
+        border = Value;
+        return Kind == BorderKind.Inclusive;
     }
 
     public bool IsExclusive(out T border)
     {
-        border = value;
-        return kind == BorderKind.Exclusive;
+        border = Value;
+        return Kind == BorderKind.Exclusive;
     }
 
-    public Sided AsLeft() => new(this, LeftSide);
-    public Sided AsRight() => new(this, RightSide);
+    public Sided AsLeft() => new(this, BorderSide.Left);
+    public Sided AsRight() => new(this, BorderSide.Right);
 
     // todo maybe range type
     // todo allow empty range?
     internal static bool IsValidRange(Border<T> left, Border<T> right)
     {
-        if (left.kind == BorderKind.Infinite || right.kind == BorderKind.Infinite)
+        if (left.Kind == BorderKind.Infinite || right.Kind == BorderKind.Infinite)
         {
             return true;
         }
 
-        return left.kind == BorderKind.Inclusive && right.kind == BorderKind.Inclusive
-            ? Comparer<T>.Default.Compare(left.value, right.value) <= 0
-            : Comparer<T>.Default.Compare(left.value, right.value) < 0;
+        return left.Kind == BorderKind.Inclusive && right.Kind == BorderKind.Inclusive
+            ? Comparer<T>.Default.Compare(left.Value, right.Value) <= 0
+            : Comparer<T>.Default.Compare(left.Value, right.Value) < 0;
     }
 
     public readonly struct Sided
     {
         private readonly Border<T> border;
-        private readonly sbyte side;
 
-        internal Sided(Border<T> border, sbyte side)
+        internal Sided(Border<T> border, BorderSide side)
         {
             this.border = border;
-            this.side = side;
+            Side = side;
         }
+
+        public BorderSide Side { get; }
 
         public bool Contain(T value)
         {
-            if (border.kind == BorderKind.Infinite)
+            if (border.Kind == BorderKind.Infinite)
             {
                 return true;
             }
 
-            var result = Math.Sign(Comparer<T>.Default.Compare(border.value, value));
-            return result == side ||
-                   result == 0 && border.kind == BorderKind.Inclusive;
+            var result = Math.Sign(Comparer<T>.Default.Compare(border.Value, value));
+            return result == (int)Side ||
+                   result == 0 && border.Kind == BorderKind.Inclusive;
         }
 
         public bool IsInfinite => border.IsInfinite;
         public bool IsInclusive(out T value) => border.IsInclusive(out value); 
-        public bool IsExclusive(out T value) => border.IsInclusive(out value);
+        public bool IsExclusive(out T value) => border.IsExclusive(out value);
 
-        public override string ToString() => (side, border.kind) switch
+        public override string ToString() => (side: Side, kind: border.Kind) switch
         {
-            (LeftSide, BorderKind.Infinite) => "(-inf",
-            (LeftSide, BorderKind.Inclusive) => $"[{border.value}",
-            (LeftSide, BorderKind.Exclusive) => $"({border.value}",
+            (BorderSide.Left, BorderKind.Infinite) => "(-inf",
+            (BorderSide.Left, BorderKind.Inclusive) => $"[{border.Value}",
+            (BorderSide.Left, BorderKind.Exclusive) => $"({border.Value}",
 
-            (RightSide, BorderKind.Infinite) => "+inf)",
-            (RightSide, BorderKind.Inclusive) => $"{border.value}]",
-            (RightSide, BorderKind.Exclusive) => $"{border.value})",
+            (BorderSide.Right, BorderKind.Infinite) => "+inf)",
+            (BorderSide.Right, BorderKind.Inclusive) => $"{border.Value}]",
+            (BorderSide.Right, BorderKind.Exclusive) => $"{border.Value})",
             _ => $"malformed {nameof(Border<T>)}.{nameof(Sided)}"
         };
     }

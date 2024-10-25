@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 #if NET8_0_OR_GREATER
@@ -5,6 +6,7 @@ namespace BTreeSlim;
 
 internal static class Contract
 {
+    [Conditional("DEBUG")]
     public static void Assert(bool condition, [CallerArgumentExpression(nameof(condition))] string assert = "")
     {
         if (!condition)

@@ -1,6 +1,6 @@
 namespace BTreeSlim;
 
-internal enum BorderKind : byte
+public enum BorderKind : byte
 {
     Infinite,
     Inclusive,

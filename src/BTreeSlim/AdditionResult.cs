@@ -26,4 +26,5 @@ public readonly ref struct AdditionResult<T>
         }
     }
 }
+
 #endif

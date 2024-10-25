@@ -1,7 +1,6 @@
 ﻿#if NET8_0_OR_GREATER
 
 using System.Collections;
-using Microsoft.Extensions.ObjectPool;
 
 namespace BTreeSlim;
 
@@ -13,10 +12,11 @@ public static class BTree
     public static BTree<TKey, T, Buffers.S15<T>, Buffers.S16<object>> Create<TKey, T>()
         where TKey : IComparable<TKey>
         where T : IKeyed<TKey>
-        => new(16 /* todo */ );
+        => new(BTree<TKey, T, Buffers.S15<T>, Buffers.S16<object>>.Pool.CreateDefault(factor: 16));
+
     public static BTree<TKey, Pair<TKey, T>, Buffers.S15<Pair<TKey, T>>, Buffers.S16<object>> CreateForPairs<TKey, T>()
         where TKey : IComparable<TKey>
-        => new(16 /* todo */ );
+        => new(BTree<TKey, Pair<TKey, T>, Buffers.S15<Pair<TKey, T>>, Buffers.S16<object>>.Pool.CreateDefault(factor: 16));
 }
 
 public sealed partial class BTree<TKey, T, TItemsBuffer, TChildrenBuffer> : IBTree<TKey, T>
@@ -27,7 +27,7 @@ public sealed partial class BTree<TKey, T, TItemsBuffer, TChildrenBuffer> : IBTr
 {
     private long version;
     private readonly Pool pool;
-    private Node? root;
+    internal Node? root;
 
     public Cursor CreateCursor() => new(this);
 
@@ -37,12 +37,10 @@ public sealed partial class BTree<TKey, T, TItemsBuffer, TChildrenBuffer> : IBTr
         {
             root = pool.GetLeaf();
         }
-
-        if (root.IsFull)
+        else if (root.IsFull)
         {
             var newRoot = pool.GetNonLeaf();
-            newRoot.children.Buffer[0] = root;
-            newRoot.children.Count = 1;
+            newRoot.children.Add(root);
             newRoot.SplitChild(0);
             root = newRoot;
         }
@@ -55,6 +53,86 @@ public sealed partial class BTree<TKey, T, TItemsBuffer, TChildrenBuffer> : IBTr
 
         root.EnsureValid(isRoot: true);
         return result;
+    }
+
+    public bool ContainsKey(TKey key) => Find(key).IsFound;
+
+    public FindResult<T> Find(TKey key)
+    {
+        if (root == null)
+        {
+            return FindResult<T>.NotFound;
+        }
+
+        var node = root;
+        m1: while (true)
+        {
+            if (node is Node.Leaf leaf)
+            {
+                var items = leaf.Items;
+                for (var i = 0; i < items.Length; i++)
+                {
+                    var item = items[i];
+                    if (Comparer<TKey>.Default.Compare(item.Key, key) == 0)
+                    {
+                        return new FindResult<T>(ref items[i]);
+                    }
+                }
+
+                return FindResult<T>.NotFound;
+            }
+            else
+            {
+                var nonLeaf = Contract.As<Node.NonLeaf>(node);
+                var items = nonLeaf.Items;
+                for (var i = 0; i < items.Length; i++)
+                {
+                    var item = items[i];
+                    if (Comparer<TKey>.Default.Compare(key, item.Key) < 0)
+                    {
+                        node = Contract.As<Node>(nonLeaf.children.Items[i]);
+                        goto m1; // todo
+                    }
+                }
+
+                node = Contract.As<Node>(nonLeaf.children.Items[^1]);
+            }
+        }
+    }
+
+    public void Remove(TKey key)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void Clear(bool returnNodesToPool = true)
+    {
+        var previousRoot = root;
+        root = null;
+        // todo Count = 0;
+        version++;
+
+        if (returnNodesToPool && previousRoot != null)
+        {
+            Return(previousRoot);
+            
+            void Return(Node node)
+            {
+                if (node is Node.Leaf leaf)
+                {
+                    pool.Return(leaf);
+                    return;
+                }
+
+                var nonLeaf = Contract.As<Node.NonLeaf>(node);
+                foreach (var child in nonLeaf.children.Buffer)
+                {
+                    Return(Contract.As<Node>(child));
+                }
+
+                pool.Return(nonLeaf);
+            }
+        }
     }
 
     ICursor<TKey, T> IBTree<TKey, T>.CreateCursor() => CreateCursor();
@@ -72,12 +150,9 @@ public sealed partial class BTree<TKey, T, TItemsBuffer, TChildrenBuffer> : IBTr
         }
     }
 
-    public BTree(int poolFactor)
+    public BTree(Pool pool)
     {
-        pool = new Pool(
-            new DefaultObjectPool<Node.Leaf>(Node.Leaf.Policy.Singleton, poolFactor * 2 * MinimumDegree),
-            new DefaultObjectPool<Node.NonLeaf>(Node.NonLeaf.Policy.Singleton, poolFactor)
-        );
+        this.pool = pool;
     }
 
     private static int MinimumDegree => TChildrenBuffer.Capacity / 2;
@@ -86,66 +161,6 @@ public sealed partial class BTree<TKey, T, TItemsBuffer, TChildrenBuffer> : IBTr
 
     private static int MinimumChildren => MinimumDegree;
     private static int MaximumChildren => 2 * MinimumDegree;
-
-    private sealed class Pool
-    {
-        private BufferList<Node.Leaf, Buffers.S4<Node.Leaf>> leafs = new(new Buffers.S4<Node.Leaf>());
-        private BufferList<Node.NonLeaf, Buffers.S32<Node.NonLeaf>> nonLeafs = new(new Buffers.S32<Node.NonLeaf>());
-
-        public Pool(ObjectPool<Node.Leaf> leafs, ObjectPool<Node.NonLeaf> nonLeafs)
-        {
-            Leafs = leafs;
-            NonLeafs = nonLeafs;
-        }
-
-        // todo allocate in advance for Adding?
-        public void DeferReturn(Node.Leaf leaf)
-        {
-            if (leafs.IsFull)
-            {
-                return;
-            }
-
-            leafs.Add(leaf);
-        }
-
-        public void DeferReturn(Node.NonLeaf nonLeaf)
-        {
-            if (nonLeafs.IsFull)
-            {
-                return;
-            }
-
-            nonLeafs.Add(nonLeaf);
-        }
-
-        public void ActualReturn()
-        {
-            try
-            {
-                foreach (var leaf in leafs.Items)
-                {
-                    Leafs.Return(leaf);
-                }
-
-                foreach (var nonLeaf in nonLeafs.Items)
-                {
-                    NonLeafs.Return(nonLeaf);
-                }
-            }
-            finally
-            {
-                leafs.Clear();
-                nonLeafs.Clear();
-            }
-        }
-
-        public Node.Leaf GetLeaf() => Leafs.Get();
-        public Node.NonLeaf GetNonLeaf() => NonLeafs.Get();
-
-        private ObjectPool<Node.Leaf> Leafs { get; }
-        private ObjectPool<Node.NonLeaf> NonLeafs { get; }
-    }
 
     public int Count => throw new NotImplementedException();
     public Enumerator GetEnumerator() => CreateCursor().AsEnumerable(Move.Next).GetEnumerator();
