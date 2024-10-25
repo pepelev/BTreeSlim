@@ -41,18 +41,141 @@ public sealed partial class BTree<TKey, T, TItemsBuffer, TChildrenBuffer> : IBTr
         {
             var newRoot = pool.GetNonLeaf();
             newRoot.children.Add(root);
-            newRoot.SplitChild(0);
+            SplitChild(newRoot, 0, root);
             root = newRoot;
         }
 
-        var result = root.TryAdd(item);
-        if (result.IsSuccess)
-        {
-            version++;
-        }
-
+        var result = TryAdd(root, item.Key, item);
+        version++;
         root.EnsureValid(isRoot: true);
         return result;
+    }
+
+    private void SplitChild(Node.NonLeaf parent, int childIndex, Node child)
+    {
+#if DEBUG
+        Contract.Assert(!parent.IsFull);
+        Contract.Assert(child.IsFull);
+        Contract.Assert(ReferenceEquals(parent.children.Items[childIndex], child));
+#endif
+
+        var (middle, newRight) = Split(child);
+
+        parent.items.InsertAt(childIndex, middle);
+        parent.children.InsertAt(childIndex + 1, newRight);
+    }
+
+    // todo нормальное название
+    private (T MiddleItem, Node NewRightNode) Split(Node node)
+    {
+#if DEBUG
+        Contract.Assert(node.IsFull);
+#endif
+
+        if (node is Node.Leaf leaf)
+        {
+            // items: TItemsBuffer.Capacity -> MinimumItems(this) + 1(MiddleItem) + MinimumItems(NewRightNode)
+
+            var central = leaf.items.Items[MinimumItems];
+            var newRightNode = pool.GetLeaf();
+
+            newRightNode.items.Add(leaf.items.Items[(MinimumItems + 1)..]);
+            leaf.items.ShrinkTo(MinimumItems);
+            return (central, newRightNode);
+        }
+        else
+        {
+            // items:    TItemsBuffer.Capacity -> MinimumItems(this) + 1(MiddleItem) + MinimumItems(NewRightNode)
+            // children: TChildrenBuffer.Capacity -> MinimumChildren(this) + MinimumChildren(NewRightNode)
+            var nonLeaf = Contract.As<Node.NonLeaf>(node);
+            var centralItem = nonLeaf.items.Items[MinimumItems];
+            var newRightNode = pool.GetNonLeaf();
+
+            newRightNode.items.Add(nonLeaf.items.Items[MinimumChildren..]);
+            nonLeaf.items.ShrinkTo(MinimumChildren);
+
+            newRightNode.children.Add(nonLeaf.children.Items[MinimumChildren..]);
+            nonLeaf.children.ShrinkTo(MinimumChildren);
+
+            return (centralItem, newRightNode);
+        }
+    }
+
+    private AdditionResult<T> TryAdd(Node node, TKey key, T item)
+    {
+        while (true)
+        {
+#if DEBUG
+            Contract.Assert(!node.IsFull);
+#endif
+
+            if (node is Node.Leaf leaf)
+            {
+                var i = leaf.items.Count - 1;
+                for (; i >= 0; i--)
+                {
+                    ref var candidateItem = ref leaf.items.Items[i];
+                    var comparison = Comparer<TKey>.Default.Compare(key, candidateItem.Key);
+                    if (comparison == 0)
+                    {
+                        return AdditionResult<T>.AlreadyPresent(ref candidateItem);
+                    }
+
+                    if (comparison > 0)
+                    {
+                        break;
+                    }
+                }
+
+                var itemIndex = i + 1;
+
+                ref var addedItem = ref leaf.items.InsertAtAndGetRef(itemIndex, ref item);
+                return AdditionResult<T>.Success(ref addedItem);
+            }
+            else
+            {
+                var nonLeaf = Contract.As<Node.NonLeaf>(node);
+                var i = nonLeaf.items.Count - 1;
+                for (; i >= 0; i--)
+                {
+                    ref var candidateItem = ref nonLeaf.items.Items[i];
+                    var comparison = Comparer<TKey>.Default.Compare(key, candidateItem.Key);
+                    if (comparison == 0)
+                    {
+                        return AdditionResult<T>.AlreadyPresent(ref candidateItem);
+                    }
+
+                    if (comparison > 0)
+                    {
+                        break;
+                    }
+                }
+
+                var childIndex = i + 1;
+                var child = Contract.As<Node>(nonLeaf.children.Items[childIndex]);
+                if (!child.IsFull)
+                {
+                    node = child;
+                }
+                else
+                {
+                    SplitChild(nonLeaf, childIndex, child);
+                    ref var middleOfSplit = ref nonLeaf.items.Items[childIndex];
+                    var comparison = Comparer<TKey>.Default.Compare(key, middleOfSplit.Key);
+                    if (comparison == 0)
+                    {
+                        return AdditionResult<T>.AlreadyPresent(ref middleOfSplit);
+                    }
+
+                    if (comparison > 0)
+                    {
+                        childIndex++;
+                    }
+
+                    node = Contract.As<Node>(nonLeaf.children.Items[childIndex]);
+                }
+            }
+        }
     }
 
     public bool ContainsKey(TKey key) => Find(key).IsFound;
@@ -69,7 +192,7 @@ public sealed partial class BTree<TKey, T, TItemsBuffer, TChildrenBuffer> : IBTr
         {
             if (node is Node.Leaf leaf)
             {
-                var items = leaf.Items;
+                var items = leaf.items.Items;
                 for (var i = 0; i < items.Length; i++)
                 {
                     var item = items[i];
@@ -107,15 +230,14 @@ public sealed partial class BTree<TKey, T, TItemsBuffer, TChildrenBuffer> : IBTr
 
     public void Clear(bool returnNodesToPool = true)
     {
-        var previousRoot = root;
-        root = null;
+        (var previousRoot, root) = (root, null);
         // todo Count = 0;
         version++;
 
         if (returnNodesToPool && previousRoot != null)
         {
             Return(previousRoot);
-            
+
             void Return(Node node)
             {
                 if (node is Node.Leaf leaf)

@@ -9,9 +9,7 @@ public readonly struct BTree8Set<T>(BTree<T, Self<T>, Buffers.S15<Self<T>>, Buff
     public AdditionResult<T> TryAdd(T item)
     {
         var result = original.TryAdd(item);
-        return result.IsSuccess
-            ? AdditionResult<T>.Success
-            : new AdditionResult<T>(ref Self.Ref(ref result.ConflictingValue));
+        return new AdditionResult<T>(result.Outcome, ref Self.Ref(ref result.Ref));
     }
 
     public bool Contains(T item) => original.ContainsKey(item);

@@ -35,7 +35,7 @@ public sealed class RandomizedReferenceTests
                 }
             }
 
-            tree.TryAdd(new Pair<int, string>(key, value)).ThrowOnConflict();
+            tree.TryAdd(new Pair<int, string>(key, value)).EnsureSuccess();
         }
 
         var list = new SortedList<int, string>(index);
@@ -83,7 +83,7 @@ public sealed class RandomizedReferenceTests
                 }
             }
 
-            tree.TryAdd(new Pair<int, string>(key, value)).ThrowOnConflict();
+            tree.TryAdd(new Pair<int, string>(key, value)).EnsureSuccess();
         }
 
         var list = new SortedList<int, string>(index);

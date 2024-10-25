@@ -29,7 +29,7 @@ internal static class BTreeExtensions
             }
 
             var leaf = Contract.As<BTree<TKey, T, TItemsBuffer, TChildrenBuffer>.Node.Leaf>(node);
-            return new FindResult<T>(ref leaf.Items[0]);
+            return new FindResult<T>(ref leaf.items.Items[0]);
         }
 
         var comparisonBorder = border.Kind == BorderKind.Inclusive

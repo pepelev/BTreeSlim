@@ -1,27 +1,67 @@
 ﻿#if NET8_0_OR_GREATER
+using System.Diagnostics.Contracts;
 using System.Runtime.CompilerServices;
 
 namespace BTreeSlim;
 
+public enum AdditionOutcome : byte
+{
+    Success,
+    AlreadyPresent
+}
+
 public readonly ref struct AdditionResult<T>
 {
-    private readonly ref T conflictingValue;
+    private readonly ref T @ref;
+    public AdditionOutcome Outcome { get; }
 
-    public static AdditionResult<T> Success => new(ref Default<T>.Ref());
+    [Pure]
+    public static AdditionResult<T> Success(ref T value) => new(AdditionOutcome.Success, ref value);
 
-    public AdditionResult(ref T conflictingValue)
+    [Pure]
+    public static AdditionResult<T> AlreadyPresent(ref T value) => new(AdditionOutcome.AlreadyPresent, ref value);
+
+    internal AdditionResult(AdditionOutcome outcome, ref T @ref)
     {
-        this.conflictingValue = ref conflictingValue;
+        Outcome = outcome;
+        this.@ref = ref @ref;
     }
 
-    // todo check !IsSuccess
-    public ref T ConflictingValue => ref conflictingValue;
-    public bool IsSuccess => Unsafe.AreSame(ref Default<T>.Ref(), ref conflictingValue);
+    public ref T Ref => ref @ref;
 
-    public void ThrowOnConflict()
+    public ref T AddedValue
     {
-        if (!IsSuccess)
+        get
         {
+            if (Outcome == AdditionOutcome.Success)
+            {
+                return ref @ref;
+            }
+
+            // todo text
+            throw new InvalidOperationException();
+        }
+    }
+
+    public ref T ConflictingValue
+    {
+        get
+        {
+            if (Outcome == AdditionOutcome.AlreadyPresent)
+            {
+                return ref @ref;
+            }
+
+            // todo text
+            throw new InvalidOperationException();
+        }
+    }
+
+    public void EnsureSuccess()
+    {
+        if (Outcome == AdditionOutcome.AlreadyPresent)
+        {
+            // todo
             throw new InvalidOperationException();
         }
     }

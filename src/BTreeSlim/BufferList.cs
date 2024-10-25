@@ -1,15 +1,9 @@
 namespace BTreeSlim;
 
-internal struct BufferList<T, TBuffer> where TBuffer : IBuffer<T>
+internal struct BufferList<T, TBuffer>(TBuffer buffer)
+    where TBuffer : IBuffer<T>
 {
-    public int Count { get; set; }
-    private TBuffer buffer;
-
-    public BufferList(TBuffer buffer)
-    {
-        this.buffer = buffer;
-        Count = 0;
-    }
+    public int Count { get; private set; } = 0;
 
     public Span<T> Buffer => buffer.Content;
     public Span<T> Items => buffer.Content[..Count];
@@ -22,37 +16,58 @@ internal struct BufferList<T, TBuffer> where TBuffer : IBuffer<T>
 
     public void InsertAt(int index, T item)
     {
-        Buffer[index..Count].CopyTo(Buffer[(index + 1)..]);
-        Buffer[index] = item;
+        var span = Buffer;
+        span[index..Count].CopyTo(span[(index + 1)..]);
+        span[index] = item;
         Count++;
     }
 
-    public void InsertAt(int index, ref T item)
+    public void InsertAt(int index, scoped ref T item)
     {
-        Buffer[index..Count].CopyTo(Buffer[(index + 1)..]);
-        Buffer[index] = item;
+        var span = Buffer;
+        span[index..Count].CopyTo(span[(index + 1)..]);
+        span[index] = item;
         Count++;
+    }
+
+    public ref T InsertAtAndGetRef(int index, T item)
+    {
+        var span = Buffer;
+        span[index..Count].CopyTo(span[(index + 1)..]);
+        span[index] = item;
+        Count++;
+        return ref span[index];
+    }
+
+    public ref T InsertAtAndGetRef(int index, scoped ref T item)
+    {
+        var span = Buffer;
+        span[index..Count].CopyTo(span[(index + 1)..]);
+        span[index] = item;
+        Count++;
+        return ref span[index];
     }
 
     public void RemoveAt(int index)
     {
-        Buffer[(index + 1)..Count].CopyTo(Buffer[index..]);
+        var span = Buffer;
+        span[(index + 1)..Count].CopyTo(span[index..]);
         ShrinkTo(Count - 1);
     }
 
     public void Add(T value)
     {
-        buffer.Content[Count++] = value;
+        Buffer[Count++] = value;
     }
 
     public void Add(ref T value)
     {
-        buffer.Content[Count++] = value;
+        Buffer[Count++] = value;
     }
 
     public void Add(ReadOnlySpan<T> values)
     {
-        values.CopyTo(buffer.Content[Count..]);
+        values.CopyTo(Buffer[Count..]);
         Count += values.Length;
     }
 
